@@ -1,0 +1,39 @@
+# 데이터 / 결과물 (public 저장소이므로 절대 올리지 않음)
+data/
+datasets/
+outputs/
+results/
+*.csv
+*.xlsx
+*.dcm
+*.nii
+*.nii.gz
+*.npy
+*.npz
+*.png
+*.jpg
+*.jpeg
+!figs/**
+
+# 모델 가중치 / 로그
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+checkpoints/
+wandb/
+runs/
+lightning_logs/
+
+# Python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*.egg-info/
+.venv/
+venv/
+
+# 기타
+.env
+.DS_Store
+.vscode/
