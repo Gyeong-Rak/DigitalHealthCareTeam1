@@ -20,6 +20,29 @@ git pull && git submodule update --init --recursive
 
 `EVA-X/`는 [hustvl/EVA-X](https://github.com/hustvl/EVA-X) 서브모듈입니다. URL을 상대 경로(`../../hustvl/EVA-X.git`)로 지정해 두어서 로컬에서는 github.com, 서버에서는 캐시 서버에서 받아집니다.
 
+## 데이터셋 (서버 전용, 저장소에는 포함하지 않음)
+
+### CheXpert-v1.0-small
+| 항목 | 서버 경로 |
+|---|---|
+| 원본 zip | `~/workspace/updown_share/CheXpert-v1.0-small.zip` |
+| 압축 해제 위치 | `~/workspace/datasets/chexpert/CheXpert-v1.0-small/` |
+| train 이미지 | `.../CheXpert-v1.0-small/train/` (223,415장) |
+| valid 이미지 | `.../CheXpert-v1.0-small/valid/` (234장) |
+| 라벨 | `.../CheXpert-v1.0-small/train.csv`, `valid.csv` |
+
+압축 해제 방법 (서버에서 1회):
+```bash
+cd ~/workspace/datasets/chexpert && nohup python -c "import zipfile; zipfile.ZipFile('/home/coder/workspace/updown_share/CheXpert-v1.0-small.zip').extractall('.')" > unzip.log 2>&1 &
+```
+
+EVA-X 학습 스크립트에서 사용할 경로 (`prepare_dataset.py`로 복사할 필요 없음):
+```bash
+DATASET_DIR=/home/coder/workspace/datasets/chexpert/CheXpert-v1.0-small/   # 끝의 / 필수
+TRAIN_LIST=/home/coder/workspace/datasets/chexpert/CheXpert-v1.0-small/train.csv
+TEST_LIST=/home/coder/workspace/datasets/chexpert/CheXpert-v1.0-small/valid.csv
+```
+
 ## 주의
 - **Public 저장소입니다.** 환자 데이터, 결과 파일, 계정/경로 정보, API 키를 올리지 마세요.
 - 데이터·가중치·결과물은 서버에만 두고 `.gitignore`로 제외합니다.
