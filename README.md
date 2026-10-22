@@ -26,22 +26,29 @@ git pull && git submodule update --init --recursive
 | 항목 | 서버 경로 |
 |---|---|
 | 원본 zip | `~/workspace/updown_share/CheXpert-v1.0-small.zip` |
-| 압축 해제 위치 | `~/workspace/datasets/chexpert/CheXpert-v1.0-small/` |
-| train 이미지 | `.../CheXpert-v1.0-small/train/` (223,415장) |
-| valid 이미지 | `.../CheXpert-v1.0-small/valid/` (234장) |
-| 라벨 | `.../CheXpert-v1.0-small/train.csv`, `valid.csv` |
+| 압축 해제 위치 | `~/workspace/datasets/chexpert/` |
+| train 이미지 | `~/workspace/datasets/chexpert/train/` (223,415장) |
+| valid 이미지 | `~/workspace/datasets/chexpert/valid/` (234장) |
+| 라벨 | `~/workspace/datasets/chexpert/train.csv`, `valid.csv` |
 
-압축 해제 방법 (서버에서 1회):
+압축 해제 방법 (서버에서 1회, zip 안에 최상위 폴더 없음):
 ```bash
 cd ~/workspace/datasets/chexpert && nohup python -c "import zipfile; zipfile.ZipFile('/home/coder/workspace/updown_share/CheXpert-v1.0-small.zip').extractall('.')" > unzip.log 2>&1 &
 ```
 
+검증:
+```bash
+cd ~/workspace/datasets/chexpert && find train -name '*.jpg' | wc -l && find valid -name '*.jpg' | wc -l   # 223415, 234
+```
+
 EVA-X 학습 스크립트에서 사용할 경로 (`prepare_dataset.py`로 복사할 필요 없음):
 ```bash
-DATASET_DIR=/home/coder/workspace/datasets/chexpert/CheXpert-v1.0-small/   # 끝의 / 필수
-TRAIN_LIST=/home/coder/workspace/datasets/chexpert/CheXpert-v1.0-small/train.csv
-TEST_LIST=/home/coder/workspace/datasets/chexpert/CheXpert-v1.0-small/valid.csv
+DATASET_DIR=/home/coder/workspace/datasets/chexpert/   # 끝의 / 필수 (경로를 문자열로 이어붙임)
+TRAIN_LIST=/home/coder/workspace/datasets/chexpert/train.csv
+TEST_LIST=/home/coder/workspace/datasets/chexpert/valid.csv
 ```
+
+> `~/workspace`는 네트워크 드라이브(CIFS)라 작은 파일 I/O가 느릴 수 있습니다.
 
 ## 주의
 - **Public 저장소입니다.** 환자 데이터, 결과 파일, 계정/경로 정보, API 키를 올리지 마세요.
