@@ -1,0 +1,3 @@
+[submodule "EVA-X"]
+	path = EVA-X
+	url = ../../hustvl/EVA-X.git
