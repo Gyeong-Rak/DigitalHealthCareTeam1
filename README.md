@@ -51,6 +51,36 @@ TEST_LIST=/home/coder/workspace/datasets/chexpert/valid.csv
 
 > `~/workspace`는 네트워크 드라이브(CIFS)라 작은 파일 I/O가 느릴 수 있습니다.
 
+## EVA-X 실행 (서버)
+
+### 1. 환경 설치 (최초 1회)
+```bash
+cd ~/workspace/DigitalHealthCareTeam1 && bash scripts/setup_env.sh
+```
+conda 환경 `evax`(python 3.10, torch 2.0.1+cu118, xformers 0.0.21, timm 0.4.12)를 만들고 마지막에 GPU 동작을 확인합니다.
+NVIDIA apex는 서버에서 빌드할 수 없어 `compat/apex/`의 PyTorch 대체 구현을 사용합니다 (결과 동일).
+
+### 2. 가중치
+`~/workspace/pretrained/`에 둡니다 (HuggingFace [MapleF/eva_x](https://huggingface.co/MapleF/eva_x), 서버에서 직접 다운로드 불가 → 로컬에서 받아 업로드).
+
+| 파일 | 용도 |
+|---|---|
+| `eva_x_tiny_patch16_merged520k_mim.pt` | Ti 사전학습 (fine-tuning 시작점) |
+| `eva_x_tiny_patch16_mrerged520k_mim_chexpert_ft.pth` | Ti CheXpert fine-tuned (평가용) |
+| `eva_x_small_patch16_merged520k_mim.pt` | S 사전학습 |
+| `eva_x_small_patch16_merged520k_mim_chexpert_ft.pth` | S CheXpert fine-tuned |
+
+### 3. 실행
+```bash
+conda activate evax
+cd ~/workspace/DigitalHealthCareTeam1
+bash scripts/run_chexpert.sh eval tiny     # 공개 fine-tuned 가중치로 valid AUC 확인 (GPU 1장)
+bash scripts/run_chexpert.sh train tiny    # 사전학습 가중치에서 fine-tuning (GPU 4장)
+EPOCHS=20 NGPU=2 bash scripts/run_chexpert.sh train small   # 환경변수로 설정 변경
+```
+결과/로그/체크포인트는 `~/workspace/outputs/chexpert/<mode>_<size>_<날짜>/`에 저장됩니다.
+학습은 오래 걸리므로 `nohup ... &` 또는 `tmux`로 실행하세요.
+
 ## 서버 환경
 - GPU: NVIDIA L4 (24GB) × 4
 - pip: 내부 미러가 기본 설정되어 있음 (`pip install` 그대로 사용)
