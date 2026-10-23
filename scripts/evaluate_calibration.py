@@ -230,6 +230,11 @@ def main(argv=None):
     try:
         paths = [eval_dir / "y_gt.npy", eval_dir / "y_pred.npy"]
         y_true, y_prob = [np.load(str(path), allow_pickle=False) for path in paths]
+        mask_path = eval_dir / "label_mask.npy"
+        if mask_path.exists():
+            mask = np.load(str(mask_path), allow_pickle=False)
+            if mask.shape != y_true.shape or not np.isin(mask, [0, 1]).all() or not mask.all():
+                raise ValueError("This split has unobserved labels; use mask-aware metrics, not this complete-label CLI")
         report = evaluate_predictions(y_true, y_prob, args.bins, args.eps)
         report["inputs"] = {path.name: {"sha256": file_sha256(path), "dtype": str(array.dtype)}
                             for path, array in zip(paths, (y_true, y_prob))}

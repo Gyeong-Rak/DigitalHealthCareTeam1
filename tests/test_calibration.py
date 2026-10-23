@@ -190,6 +190,19 @@ class CalibrationCLITests(unittest.TestCase):
             self.assertEqual(report["macro"]["auroc_valid_classes"], 0)
             self.assertEqual(list(output.glob("*.png")), [])
 
+    def test_unobserved_label_mask_is_not_silently_scored(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            np.save(str(folder / "y_gt.npy"), five_columns([0, 1]))
+            np.save(str(folder / "y_pred.npy"), five_columns([.2, .8]))
+            mask = np.ones((2, 5), dtype=bool)
+            mask[0, 0] = False
+            np.save(str(folder / "label_mask.npy"), mask)
+            result = subprocess.run([sys.executable, str(SCRIPT), "--eval-dir", tmp, "--no-plots"],
+                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("unobserved labels", result.stderr)
+
 
 class EvaluationLauncherTests(unittest.TestCase):
     def test_empty_checkpoint_is_rejected_and_worker_failure_is_propagated(self):
