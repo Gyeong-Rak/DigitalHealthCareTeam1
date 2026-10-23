@@ -57,7 +57,7 @@ TEST_LIST=/home/coder/workspace/datasets/chexpert/valid.csv
 ```bash
 cd ~/workspace/DigitalHealthCareTeam1 && bash scripts/setup_env.sh
 ```
-conda 환경 `evax`(python 3.10, torch 2.0.1+cu118, xformers 0.0.21, timm 0.4.12)를 만들고 마지막에 GPU 동작을 확인합니다.
+conda 환경 `evax`(python 3.10, torch 2.1.2+cu121, xformers 0.0.23.post1, timm 0.4.12)를 만들고 마지막에 GPU 동작을 확인합니다.
 NVIDIA apex는 서버에서 빌드할 수 없어 `compat/apex/`의 PyTorch 대체 구현을 사용합니다 (결과 동일).
 
 ### 2. 가중치
@@ -84,7 +84,7 @@ EPOCHS=20 NGPU=2 bash scripts/run_chexpert.sh train small   # 환경변수로 �
 ## 서버 환경
 - GPU: NVIDIA L4 (24GB) × 4
 - pip: 내부 미러가 기본 설정되어 있음 (`pip install` 그대로 사용)
-- 특정 CUDA 버전의 torch: `--index-url http://torch-download.snuhub-cache-server/whl/cu118`
+- torch는 PyPI 미러에서 설치 (`torch-download` 미러는 일부 버전이 외부 주소로 연결되어 실패함)
 - GitHub: `https://github.com` → `http://github.snuhub-cache-server`
 
 ## 주의

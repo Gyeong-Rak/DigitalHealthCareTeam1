@@ -2,7 +2,6 @@
 # EVA-X 실행용 conda 환경(evax) 설치. 서버에서 1회 실행: bash scripts/setup_env.sh
 set -e
 ENV_NAME=evax
-TORCH_INDEX=http://torch-download.snuhub-cache-server/whl/cu118
 
 source "$(conda info --base)/etc/profile.d/conda.sh"
 if ! conda env list | grep -qE "^${ENV_NAME}\s"; then
@@ -11,12 +10,13 @@ if ! conda env list | grep -qE "^${ENV_NAME}\s"; then
 fi
 conda activate "$ENV_NAME"
 
-# torch 2.0.1 + CUDA 11.8 (xformers 0.0.21과 짝이 맞는 버전)
-pip install torch==2.0.1 torchvision==0.15.2 --index-url "$TORCH_INDEX"
-# --no-deps: torch 재설치 방지 / libauc가 요구하는 opencv-python(GUI 의존성) 대신 headless 사용
-pip install --no-deps xformers==0.0.21 libauc==1.3.0
-pip install timm==0.4.12 einops==0.6.1 "numpy<2" pandas==2.0.3 scikit-learn==1.3.0 scipy tqdm \
+# torch 미러(torch-download)는 실제 파일을 download-r2.pytorch.org로 연결해 서버에서 받을 수 없음
+# → PyPI 미러의 torch 2.1.2(cu121) + 짝이 맞는 xformers 0.0.23.post1 사용
+pip install torch==2.1.2 torchvision==0.16.2 xformers==0.0.23.post1 \
+    timm==0.4.12 einops==0.6.1 "numpy<2" pandas==2.0.3 scikit-learn==1.3.0 scipy tqdm \
     opencv-python-headless tensorboard tensorboardX matplotlib
+# --no-deps: libauc가 요구하는 opencv-python(GUI 의존성) 대신 headless 사용
+pip install --no-deps libauc==1.3.0
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO/EVA-X/classification"
