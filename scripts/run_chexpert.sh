@@ -4,7 +4,7 @@
 #   bash scripts/run_chexpert.sh train tiny|small   # MIM 사전학습 가중치에서 fine-tuning
 # 환경변수로 변경 가능: NGPU, EPOCHS, BATCH_SIZE, NUM_WORKERS, WEIGHTS_DIR, DATA_DIR, OUT_ROOT
 # 하이퍼파라미터는 EVA-X/classification/train_files/eva_x/chexpert/vit_{ti,s}.sh와 동일
-set -e
+set -eo pipefail
 MODE=${1:?usage: run_chexpert.sh eval|train tiny|small}
 SIZE=${2:?usage: run_chexpert.sh eval|train tiny|small}
 
@@ -35,6 +35,7 @@ case $MODE in
     *) echo "MODE는 eval 또는 train"; exit 1 ;;
 esac
 [ -f "$CKPT" ] || { echo "가중치 없음: $CKPT"; exit 1; }
+[ -s "$CKPT" ] || { echo "가중치가 0바이트입니다. Share 업로드가 완료된 파일을 지정하세요: $CKPT"; exit 1; }
 
 SAVE_DIR=$OUT_ROOT/chexpert/${MODE}_${SIZE}_$(date +%m%d_%H%M)
 mkdir -p "$SAVE_DIR"

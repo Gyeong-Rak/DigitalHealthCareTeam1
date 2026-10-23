@@ -81,6 +81,67 @@ EPOCHS=20 NGPU=2 bash scripts/run_chexpert.sh train small   # 환경변수로 �
 결과/로그/체크포인트는 `~/workspace/outputs/chexpert/<mode>_<size>_<날짜>/`에 저장됩니다.
 학습은 오래 걸리므로 `nohup ... &` 또는 `tmux`로 실행하세요.
 
+Share를 통해 올린 가중치를 바로 읽으려면 경로를 지정합니다.
+```bash
+WEIGHTS_DIR="$HOME/workspace/updown_share" bash scripts/run_chexpert.sh eval tiny
+```
+가중치가 0바이트이면 실행을 중단합니다. 환경 설치는 데이터 로더와 평가 코드의 import도 확인하며,
+기존 환경에서 `medpy`가 없으면 `python -m pip install "numpy<2" "MedPy==0.5.2"`로 보완합니다.
+
+### 4. 저장된 예측으로 calibration 평가
+
+모델 평가가 끝난 결과 폴더의 `y_gt.npy`, `y_pred.npy`를 사용합니다.
+CPU에서 실행하며 모델, GPU, 가중치 또는 추가 추론이 필요하지 않습니다.
+같은 평가 실행에서 생성된 두 파일을 사용해야 합니다.
+```bash
+conda activate evax
+cd ~/workspace/DigitalHealthCareTeam1
+# 아래 경로를 평가 결과 폴더로 변경 (run_chexpert.sh 로그의 output_dir)
+python scripts/evaluate_calibration.py \
+    --eval-dir "$HOME/workspace/outputs/chexpert/eval_tiny_1023_0811"
+```
+
+기본적으로 5개와 10개 구간을 모두 평가합니다. `--bins 5`로 한 가지 구간 수만 지정하거나
+`--output-dir <경로>`로 결과 위치를 바꿀 수 있습니다. `--no-plots`는 표만 저장합니다.
+NumPy, scikit-learn, matplotlib를 사용하며 `setup_env.sh`에 포함되어 있습니다.
+
+결과는 `<평가 결과 폴더>/calibration/`에 저장됩니다.
+
+| 파일 | 내용 |
+|---|---|
+| `metrics.json` | 질환별·macro AUROC, Brier, NLL, ECE, Adaptive ECE, 구간별 통계, 입력 파일 해시 |
+| `metrics.csv` | 질환별·macro 지표 표 (구간 수별 행) |
+| `bin_stats.csv` | 구간 경계, 샘플 수, 평균 확률, 실제 양성 비율, ECE 기여도 |
+| `reliability_uniform_5.png`, `reliability_uniform_10.png` | 등간격 구간 Reliability diagram과 구간별 샘플 수 |
+| `reliability_adaptive_5.png`, `reliability_adaptive_10.png` | 분위수 구간 Reliability diagram과 구간별 샘플 수 |
+
+계산 기준:
+- 입력은 `(N, 5)` 배열이며, 열 순서는 **Atelectasis, Cardiomegaly, Consolidation, Edema, Pleural Effusion**입니다.
+  EVA-X의 현재 5개 출력 순서이며, 14개 출력이나 다른 순서의 결과는 그대로 넣지 않습니다.
+- 정답은 0/1, 예측은 sigmoid 양성 확률이어야 합니다. 불확실 라벨(-1), soft label, NaN, 범위 밖 확률은 오류로 처리합니다.
+- 질환별 ECE = `sum(구간 샘플 수 / 전체 샘플 수 * |평균 양성 확률 - 실제 양성 비율|)`.
+  다중 클래스의 최대 softmax 확률을 사용하는 ECE와 구분합니다.
+- 등간격 구간은 `(하한, 상한]`이며 첫 구간은 0도 포함합니다 (scikit-learn과 동일).
+  Adaptive ECE는 확률의 분위수로 경계를 정합니다. 같은 확률을 나누지 않으므로 동점이 많으면 유효 구간 수가 줄어듭니다.
+  빈 구간은 지표에서 가중치가 0이고, 통계값은 JSON에서 `null`입니다.
+- Brier는 `mean((p-y)^2)`, NLL은 이진 음의 로그우도(자연로그)입니다.
+  NLL만 float64에서 확률을 `[1e-7, 1-1e-7]`로 제한하며, `--eps`로 바꿀 수 있습니다.
+  저장된 확률의 반올림 때문에 원본 logits에서 계산한 BCE loss와 조금 다를 수 있습니다.
+- 모든 지표는 이미지 단위입니다. macro는 질환별 지표의 단순 평균입니다.
+  양성 또는 음성이 전혀 없는 질환의 AUROC는 `null`/빈 CSV 셀로 기록하고 macro AUROC에서 제외하며, 유효 질환 수도 JSON에 남깁니다.
+- Reliability diagram은 x축이 평균 양성 예측 확률, y축이 실제 양성 비율입니다.
+  대각선 아래는 질환 위험을 높게 예측한 구간, 위는 낮게 예측한 구간입니다.
+  Brier/NLL은 판별력도 반영하므로 ECE와 그래프를 함께 확인합니다.
+- 이 단계는 **TS 적용 전**의 측정입니다. 보정용 데이터 분리, Temperature Scaling, 환자 단위 bootstrap 신뢰구간은 별도 단계입니다.
+
+구간 정의와 확률 지표 참고: [scikit-learn probability calibration](https://scikit-learn.org/stable/modules/calibration.html).
+데이터, 예측 배열, 생성된 결과물은 Git에 올리지 않습니다.
+
+로컬 계산·입출력 테스트 (학습 실행 없음):
+```bash
+python -m unittest discover -s tests -v
+```
+
 ## 서버 환경
 - GPU: NVIDIA L4 (24GB) × 4
 - pip: 내부 미러가 기본 설정되어 있음 (`pip install` 그대로 사용)

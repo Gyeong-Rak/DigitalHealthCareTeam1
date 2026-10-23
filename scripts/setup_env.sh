@@ -12,16 +12,18 @@ conda activate "$ENV_NAME"
 
 # torch 미러(torch-download)는 실제 파일을 download-r2.pytorch.org로 연결해 서버에서 받을 수 없음
 # → PyPI 미러의 torch 2.1.2(cu121) + 짝이 맞는 xformers 0.0.23.post1 사용
-pip install torch==2.1.2 torchvision==0.16.2 xformers==0.0.23.post1 \
+python -m pip install torch==2.1.2 torchvision==0.16.2 xformers==0.0.23.post1 \
     timm==0.4.12 einops==0.6.1 "numpy<2" pandas==2.0.3 scikit-learn==1.3.0 scipy tqdm \
-    opencv-python-headless tensorboard tensorboardX matplotlib
+    opencv-python-headless tensorboard tensorboardX matplotlib MedPy==0.5.2
 # --no-deps: libauc가 요구하는 opencv-python(GUI 의존성) 대신 headless 사용
-pip install --no-deps libauc==1.3.0
+python -m pip install --no-deps libauc==1.3.0
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO/EVA-X/classification"
 PYTHONPATH="$REPO/compat" python - <<'PY'
 import torch, xformers.ops as xops
+import train  # 데이터 로더와 평가 코드까지 import 가능한지 확인 (학습은 실행하지 않음)
+print('classification imports: ok')
 print('torch', torch.__version__, '| cuda', torch.cuda.is_available(), '| gpus', torch.cuda.device_count())
 q = torch.randn(1, 16, 4, 32, device='cuda', dtype=torch.half)
 xops.memory_efficient_attention(q, q, q)
