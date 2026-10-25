@@ -1,5 +1,8 @@
 # DigitalHealthCareTeam1
 
+PPT 전체 실험 자동 실행·상태 확인·재개·docs 자동 보고서: [STUDY_GUIDE.md](STUDY_GUIDE.md).
+이미 완료한 실험 내용과 결과: [docs/experiments](docs/experiments/README.md).
+
 ## 작업 흐름
 SNUHub 서버는 외부 인터넷이 차단되어 있어 서버에서는 GitHub 캐시 서버를 통해 **pull만** 가능합니다.
 코드는 각자 로컬 PC에서 작업하고, 서버에서는 pull 후 실행만 합니다.
@@ -285,5 +288,6 @@ TS fitting은 이번 구현에 포함하지 않습니다.
 - GitHub: `https://github.com` → `http://github.snuhub-cache-server`
 
 ## 주의
+- `docs/experiments/`에는 실험 조건과 집계 지표의 Markdown 보고서를 공유합니다. 원시 데이터·환자 ID·이미지 경로·예측 배열·가중치는 제외합니다.
 - **Public 저장소입니다.** 환자 데이터, 이미지, csv, 결과물, 가중치, 계정 정보, API 키를 올리지 마세요.
 - `.gitignore`로 막아두었지만 `git add` 전에 한 번 확인해 주세요.

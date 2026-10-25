@@ -11,7 +11,7 @@ from unittest.mock import patch
 from test_tiny_training import write_fixture, splits, torch, training
 
 
-def distributed_worker(rank, root_name, port):
+def distributed_worker(rank, root_name, port, study=False):
     root = Path(root_name)
     os.environ.update(RANK=str(rank), LOCAL_RANK=str(rank), WORLD_SIZE="2",
                       MASTER_ADDR="127.0.0.1", MASTER_PORT=str(port))
@@ -33,6 +33,9 @@ def distributed_worker(rank, root_name, port):
         splits_dir=root / "splits", pretrained=root / "fixture.pt", output_dir=root / "run", checkpoint=None,
         eval_split="test", resume=None, epochs=1, batch_size=8, workers=0, accumulation=2,
         lr=.001, weight_decay=.05, layer_decay=.55, seed=0, cpu=True)
+    if study:
+        args.experiment_config = root / "method.json"
+        args.epochs, args.patience, args.min_epochs, args.min_delta, args.clip_grad = 2, 1, 1, 1., 0.
     with patch.object(training, "build_model", side_effect=lambda device: ToyModel().to(device)), \
             patch.object(training, "load_pretrained"):
         training.run(args)
@@ -58,6 +61,22 @@ class DistributedTrainingTests(unittest.TestCase):
             self.assertEqual(len(records), 1)
             self.assertEqual(json.loads(records[0])["epoch"], 1)
             self.assertFalse((root / "run/test").exists())
+
+    def test_study_method_early_stop_broadcast_on_two_ranks(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_fixture(root, create_images=True)
+            splits.prepare_splits(root, root / "splits", check_images=True)
+            (root / "fixture.pt").write_bytes(b"synthetic fixture; loading mocked")
+            (root / "method.json").write_text(json.dumps(dict(loss="mdca")))
+            with socket.socket() as listener:
+                listener.bind(("127.0.0.1", 0))
+                port = listener.getsockname()[1]
+            torch.multiprocessing.spawn(distributed_worker, args=(tmp, port, True), nprocs=2, join=True)
+            checkpoint = torch.load(root / "run/last.pth", map_location="cpu")
+            self.assertEqual(checkpoint["config"]["method"]["loss"], "mdca")
+            self.assertEqual(len(checkpoint["best"]), 4)
+            self.assertTrue(json.loads((root / "run/history.jsonl").read_text().splitlines()[-1])["early_stopped"])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "description": "PPT screening: all proposed axes, one seed; runtime is not capped at 24h",
+  "seeds": [0],
+  "training": {
+    "epochs": 10, "min_epochs": 5, "patience": 2, "min_delta": 0.0001,
+    "batch_size": 256, "gpus": 4, "workers": 8,
+    "accumulation": 1, "lr": 0.001, "layer_decay": 0.55,
+    "weight_decay": 0.05, "clip_grad": 0.0
+  },
+  "split_seed": 42,
+  "expert_calibration_fraction": 0.5,
+  "bootstrap_replicates": 500,
+  "bootstrap_seed": 2026,
+  "combination_auroc_tolerance": 0.005,
+  "retries": 1,
+  "plots": true,
+  "cases": [
+    {"id": "baseline", "axis": "baseline", "method": {"loss": "bce", "scope": "full", "uncertain": "original"}},
+    {"id": "c_head", "axis": "C", "method": {"scope": "head"}},
+    {"id": "c_partial", "axis": "C", "method": {"scope": "partial", "partial_blocks": 2}},
+    {"id": "c_lora", "axis": "C", "method": {"scope": "lora", "lora_rank": 8, "lora_alpha": 16.0}},
+    {"id": "b_ones", "axis": "B", "method": {"uncertain": "ones"}},
+    {"id": "b_zeros", "axis": "B", "method": {"uncertain": "zeros"}},
+    {"id": "b_ignore", "axis": "B", "method": {"uncertain": "ignore"}},
+    {"id": "b_soft", "axis": "B", "method": {"uncertain": "soft", "soft_low": 0.55, "soft_high": 0.85}},
+    {"id": "a_smoothing", "axis": "A", "method": {"loss": "label_smoothing", "smoothing": 0.05}},
+    {"id": "a_focal", "axis": "A", "method": {"loss": "focal", "focal_gamma": 2.0}},
+    {"id": "a_mdca", "axis": "A", "method": {"loss": "mdca", "mdca_weight": 1.0}},
+    {"id": "a_mixup", "axis": "A", "method": {"loss": "mixup", "mixup_alpha": 0.2}},
+    {"id": "a_spa_lpr", "axis": "A", "method": {"loss": "spa_lpr", "spa_zeta": 5.0, "spa_k": 3.0, "spa_b": 1.0, "lpr_weight": 0.1}}
+  ]
+}
