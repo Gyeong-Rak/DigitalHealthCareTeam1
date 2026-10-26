@@ -15,3 +15,5 @@
 실행·상태 확인·재개 방법: [STUDY_GUIDE.md](../../STUDY_GUIDE.md).
 
 구현 검증과 남은 검증 범위: [IMPLEMENTATION_REVIEW.md](IMPLEMENTATION_REVIEW.md).
+
+추가 요청 조합 및 기존 결과 재사용 실행: [U-Ignore + LoRA + Mixup](FOLLOWUP_LORA_MIXUP_IGNORE.md).

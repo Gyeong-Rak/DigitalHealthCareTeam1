@@ -173,6 +173,7 @@ def build_report(output, bootstrap=True):
     rows = [row for case in cases for row in case["rows"]]
     aggregate = dict(schema_version=1, generated_at=now(), completed_conditions=len(cases), expected_conditions=len(config["cases"]) + 1,
                      seed_count=1, seeds=[0], rows=rows,
+                     selection_mode=spec.get("selection_mode", "dev_only"),
                      uncertainty="Single training seed. Bootstrap reflects test-patient sampling only.")
     atomic_json(output / "aggregate.json", aggregate)
     ci = bootstrap_results(output, spec, cases) if bootstrap else None
@@ -193,6 +194,13 @@ def build_report(output, bootstrap=True):
                    "- dev·report calibration은 자동 추출 라벨이고 명시적 -1은 평가/TS에서 제외, 미언급은 0입니다.\n"
                    "- 공개 체크포인트와 분할·학습 일정이 달라 공식 성능 재현 실험이 아닙니다.\n"
                    "- ECE·AECE는 질환별 양성 확률 기준이며 bin 5/10을 모두 봅니다.")
+    if spec.get("selection_mode") == "post_hoc_exploratory":
+        setup_common += ("\n\n**추가 탐색 조합: U-Ignore + LoRA + Mixup.** 기존 조건은 원래 학습 결과를 재사용하며, "
+                         "추가 조합만 새로 학습했습니다. 조합은 중간 test 결과를 확인한 뒤 사용자가 지정했습니다.")
+        limitations = limitations.replace(
+            "- test 결과로 체크포인트, 조합, 온도 또는 hyperparameter를 선택하지 않았습니다.",
+            "- 추가 조합은 중간 test 결과를 검토한 뒤 지정한 사후 탐색입니다. 같은 test의 점수는 독립적인 최종 검증으로 볼 수 없습니다. "
+            "학습 checkpoint는 dev, 온도 fitting은 별도 calibration 환자만 사용합니다.")
     for case in cases:
         cfg = case["config"]
         details = {k: cfg.get(k) for k in ("method", "epochs", "batch_size_per_gpu", "world_size", "lr", "layer_decay", "weight_decay", "clip_grad", "early_stopping", "trainable_parameters")}
@@ -249,7 +257,8 @@ def build_report(output, bootstrap=True):
         description += "\n| {} | {} |".format(name, " | ".join(phases))
     combination = output / "combination_selection.json"
     if combination.exists():
-        description += "\n\n조합 선택(dev만 사용): `{}`.".format(json.dumps(read_json(combination)["selected"], ensure_ascii=False))
+        label = "사용자 지정 추가 탐색 조합" if spec.get("selection_mode") == "post_hoc_exploratory" else "조합 선택(dev만 사용)"
+        description += "\n\n{}: `{}`.".format(label, json.dumps(read_json(combination)["selected"], ensure_ascii=False))
     report = render_report("Tiny calibration 연구 진행 및 결과", description, "\n".join(table),
         "각 조건의 상세 표와 TS fitting 정보는 개별 보고서를 확인하세요. " + ("Bootstrap 계산 완료." if bootstrap else "현재 중간 결과이며 bootstrap은 전체 종료 후 계산합니다."),
         limitations, "\n".join(links) if links else "완료된 조건이 아직 없습니다.", template)
