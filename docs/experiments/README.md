@@ -1,19 +1,65 @@
-# 실험 기록
+# 흉부 X-ray 예측 신뢰도 개선 — 실험 요약
 
-| 실험 | 상태 | 주요 결과 |
-|---|---|---|
-| [공개 Tiny·Small 가중치 평가](2026-10-23_public_baselines.md) | 완료 | mAUROC Tiny 0.895816 / Small 0.901189 |
-| [Tiny 재학습: BCE vs label smoothing](2026-10-23_tiny_loss_screening.md) | 완료 | AUROC 거의 동일, smoothing의 Brier·NLL 개선, ECE는 bin에 따라 혼합 |
-| PPT 전체 축 자동 실행 | 코드 준비·검증 단계 | 새 학습 결과는 아직 없음 |
+업데이트: **2026-10-26**. 목적은 **EVA-X의 AUROC를 유지하면서 예측 확률의 calibration을 개선**하는 것입니다.
 
-완료 기록은 사용자가 제공한 서버 로그를 옮긴 것입니다. 이 작업 환경에서 서버의 원시 예측 파일을 직접 재검증한 결과는 아닙니다. 미제공 값은 추정해서 채우지 않습니다.
+**현재 상태:** 원래 13조건과 추가 조합 1조건의 학습·평가·TS 계산이 완료됐습니다. 마지막 공유 상태는 오류 0개, bootstrap 계산 중이었으며, 최종 신뢰구간은 아직 전달받지 않았습니다. 아래는 사용자 제공 서버 보고서·상태 화면을 옮긴 중간 결과입니다.
 
-새 자동 실행은 `generated/<실험 폴더명>/`에 조건별 보고서와 전체 `README.md`를 생성합니다. 학습·dev 선택·test 평가·TS 계산까지 끝난 조건만 결과에 포함합니다. 실행 중에는 중간 보고서, 전체 종료 시에는 환자 bootstrap CI를 추가합니다. 생성 문서는 로컬 파일이며 Git commit/push는 자동 실행하지 않습니다.
+## 실험 구성
 
-문서의 기본 형식은 **실험 내용 → 결과 → 해석 → 한계 → 산출물**입니다. 팀 형식이 확정되면 [`_template.md`](_template.md)를 수정하고 실행 시 `--report-template docs/experiments/_template.md`로 지정할 수 있습니다. 실험 도중에는 사용한 템플릿을 바꾸지 않고 새 실행부터 적용합니다.
+- 모델: 공개 EVA-X Tiny MIM 가중치에서 시작. Baseline은 전체 파인튜닝(patch embedding 고정) + BCE + 원본 soft 불확실 라벨 처리.
+- 데이터: CheXpert 정면 영상, 환자별 train/dev/calibration 분리. **주 평가는 공식 valid의 정면 202장·200명**.
+- 공통 조건: **seed 0 하나**, GPU 4개 × batch 256, AdamW, LR 0.001, 최대 10 epoch. 최소 5 epoch 이후 dev AUROC plateau 2회면 종료. 체크포인트는 dev AUROC 최고점으로 선택.
+- 비교 축: 학습 범위(Head/마지막 2개 block/LoRA), 불확실 라벨(Ones/Zeros/Ignore/Soft), 학습 방법(Smoothing/Focal/MDCA/Mixup/SPA+LPR). 원래 13조건은 baseline에서 한 축씩 변경.
+- 추가 조합: **U-Ignore + LoRA + Mixup**. 기존 13개 결과를 재사용하고 새 조합만 학습. 중간 test 결과를 확인한 뒤 지정한 **사후 탐색 실험**.
+- 모든 조건을 보정 없음 / 공통 Temperature Scaling(TS) / 질환별 TS로 평가. 아래 ECE는 **등간격 10 bins**, 질환별 양성 확률 기준이며 macro 평균입니다. **AUROC는 높을수록, Brier·NLL·ECE는 낮을수록 좋습니다.**
 
-실행·상태 확인·재개 방법: [STUDY_GUIDE.md](../../STUDY_GUIDE.md).
+## 주 평가: 전체 202장, 보정 전
 
-구현 검증과 남은 검증 범위: [IMPLEMENTATION_REVIEW.md](IMPLEMENTATION_REVIEW.md).
+| 조건 | mAUROC ↑ | Brier ↓ | NLL ↓ | ECE@10 ↓ |
+|---|---:|---:|---:|---:|
+| Baseline | 0.88685 | 0.13966 | 0.43622 | 0.11467 |
+| Head만 학습 | 0.87091 | 0.15203 | 0.46815 | 0.12628 |
+| 마지막 2개 block 학습 | 0.88592 | 0.13860 | 0.43363 | 0.11622 |
+| LoRA | 0.87953 | 0.14360 | 0.44787 | 0.11761 |
+| U-Ones | 0.88370 | **0.13238** | **0.41824** | 0.11588 |
+| U-Zeros | 0.87728 | 0.16308 | 0.51587 | 0.14259 |
+| U-Ignore | 0.87795 | 0.14444 | 0.45908 | 0.12039 |
+| Soft U | 0.88451 | 0.13801 | 0.43112 | 0.11810 |
+| Label smoothing | 0.88673 | 0.13841 | 0.42851 | 0.11786 |
+| Focal | 0.88650 | 0.15040 | 0.47424 | 0.16897 |
+| BCE + MDCA | 0.88358 | 0.14647 | 0.46402 | 0.12130 |
+| Mixup | **0.88705** | 0.14109 | 0.44034 | 0.12172 |
+| SPA+LPR | 0.87993 | 0.14067 | 0.44122 | **0.11087** |
+| **추가 조합: Ignore + LoRA + Mixup** | 0.87684 | 0.15321 | 0.47432 | 0.13415 |
 
-추가 요청 조합 및 기존 결과 재사용 실행: [U-Ignore + LoRA + Mixup](FOLLOWUP_LORA_MIXUP_IGNORE.md).
+상태 화면의 소수 5자리 표시값을 기록했습니다. 표의 굵은 지표는 이 보정 전 비교에서의 최고점이며 통계적 유의성을 뜻하지 않습니다.
+
+**현재 해석:**
+
+- Mixup은 AUROC 최고점이지만 baseline 대비 약 **+0.02%p**로 차이가 작고 ECE는 악화. SPA+LPR은 ECE가 약 **3.3% 감소**했지만 AUROC가 약 **0.69%p 하락**.
+- 부분층 학습·label smoothing은 AUROC가 거의 유지되면서 Brier·NLL이 개선됐으나 ECE@10은 소폭 악화. U-Ones는 Brier·NLL이 가장 좋지만 AUROC가 약 **0.31%p 하락**.
+- **추가 조합은 baseline 대비 AUROC 약 1.00%p 하락, ECE 약 17% 증가.** 질환별 TS 후에도 AUROC 0.87684 / ECE 0.13009로 baseline의 보정 전 수준을 회복하지 못함. 개별 방법의 장점이 결합에서도 유지된다는 가설은 현재 주 평가에서 뒷받침되지 않음.
+- 전체 202장에서는 **AUROC와 ECE@10을 동시에 개선한 조건을 아직 확인하지 못함**.
+
+## TS 결과와 보조 평가
+
+판독문 기반 held-out 라벨로 TS를 fit한 주 평가에서는 대부분 조건의 Brier·NLL이 악화됐습니다. 별도로 공식 valid 환자를 50/50으로 나눠 **한쪽 전문가 라벨로 fit하고 나머지 환자만 평가**한 `expert_subset`도 측정했습니다. 주 평가와 표본이 달라 아래 수치를 위 표와 직접 비교하지 않습니다.
+
+동일 보조 평가에서 **모두 질환별 TS를 적용한** 주요 결과:
+
+| 조건 | mAUROC ↑ | Brier ↓ | NLL ↓ | ECE@10 ↓ |
+|---|---:|---:|---:|---:|
+| Baseline + TS | 0.902830 | 0.123232 | 0.378332 | 0.116692 |
+| LoRA + TS | 0.893129 | 0.125985 | 0.384446 | 0.091463 |
+| Mixup + TS | 0.907160 | 0.123295 | 0.378805 | 0.104788 |
+
+Baseline+TS 대비 **Mixup+TS는 AUROC +0.433%p, ECE 약 10.2% 감소**. LoRA+TS는 ECE 약 21.6% 감소 대신 AUROC 약 0.97%p 하락. Mixup+TS의 두 지표 개선은 보조 평가의 관측이며 Brier·NLL까지 모두 우세한 것은 아닙니다. **추가 조합의 보조 평가 수치는 아직 전달받지 않아 포함하지 않았습니다.**
+
+## 해석 범위·후속 확인
+
+- seed 1개·작은 전문가 평가 세트의 point estimate입니다. 최종 환자 단위 bootstrap 500회·95% CI 확인 전이며 학습 seed·TS fitting의 불확실성을 추정하지 않습니다.
+- 원래 조건의 모델 선택은 dev, 온도 fitting은 분리된 calibration 환자만 사용했습니다. 추가 조합은 test를 본 후 정했으므로 같은 test의 결과를 독립적인 최종 검증이라고 주장하지 않습니다.
+- ECE는 bin 수에 민감합니다. 원본 보고서의 ECE@5/10·Adaptive ECE·질환별 결과·reliability diagram도 함께 확인해야 합니다. 현재 표만으로 라벨 품질 차이를 TS 성능 차이의 원인으로 확정할 수 없습니다.
+- 공개 가중치 평가에서는 Tiny mAUROC **0.895816**, Small **0.901189**였지만 재학습과 분할·학습 조건이 달라 공식 성능 재현을 주장하지 않습니다. 이 문서는 서버 원시 배열을 독립 재계산한 결과가 아닙니다.
+
+상세: [공개 가중치 평가](2026-10-23_public_baselines.md) · [최초 BCE/Smoothing 비교](2026-10-23_tiny_loss_screening.md) · [추가 조합 정의](FOLLOWUP_LORA_MIXUP_IGNORE.md) · [전체 실행·지표 정의](../../STUDY_GUIDE.md).
