@@ -13,6 +13,8 @@
 
 ## 실험 1 — 사후 보정 비교와 유병률 분석 (학습 없음, CPU)
 
+결과: [2026-10-27_calibration_shift_analysis.md](2026-10-27_calibration_shift_analysis.md) (seed 0, 완료)
+
 `scripts/analyze_calibration_shift.py`. 저장된 logits만 사용하며 기존 TS와 **같은 fitting 데이터·같은 평가 데이터**를 씁니다.
 
 | 보정 | 식 (질환별) | fitting |
